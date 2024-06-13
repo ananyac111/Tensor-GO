@@ -1,0 +1,42 @@
+//Create a component to display the list of due invoices
+// src/components/Invoices.js
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const Invoices = () => {
+  const [invoices, setInvoices] = useState([]);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      const response = await axios.get('/api/invoices');
+      setInvoices(response.data);
+    };
+
+    fetchInvoices();
+  }, []);
+
+  const triggerAutomation = async (invoiceId) => {
+    try {
+      await axios.post('/api/invoices/trigger', { invoiceId });
+      alert('Automation triggered successfully!');
+    } catch (error) {
+      console.error('Failed to trigger automation', error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Due Invoices</h1>
+      <ul>
+        {invoices.map(invoice => (
+          <li key={invoice._id}>
+            Amount: {invoice.amount} - Due Date: {new Date(invoice.dueDate).toLocaleDateString()}
+            <button onClick={() => triggerAutomation(invoice._id)}>Trigger Automation</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default Invoices;
