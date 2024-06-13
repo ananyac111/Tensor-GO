@@ -1,0 +1,57 @@
+// routes/authRoutes.js
+const express = require('express');
+const passport = require('passport');
+const router = express.Router();
+
+router.get('/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}));
+
+router.get('/google/callback', passport.authenticate('google'), (req, res) => {
+  res.redirect('/invoices');
+});
+
+router.get('/logout', (req, res) => {
+  req.logout();
+  res.redirect('/');
+});
+
+router.get('/current_user', (req, res) => {
+  res.send(req.user);
+});
+
+module.exports = router;
+
+// routes/invoiceRoutes.js
+const express = require('express');
+const mongoose = require('mongoose');
+const axios = require('axios');
+const Invoice = mongoose.model('Invoice');
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+  const invoices = await Invoice.find({ userId: req.user.id });
+  res.send(invoices);
+});
+
+router.post('/trigger', async (req, res) => {
+  const { invoiceId } = req.body;
+  const invoice = await Invoice.findById(invoiceId);
+  if (!invoice || invoice.isPaid) {
+    return res.status(400).send('Invalid invoice');
+  }
+
+  try {
+    await axios.post(process.env.ZAPIER_WEBHOOK_URL, {
+      invoiceId: invoice.id,
+      amount: invoice.amount,
+      dueDate: invoice.dueDate,
+      recipient: invoice.recipient
+    });
+    res.send({ success: true });
+  } catch (error) {
+    res.status(500).send('Failed to trigger automation');
+  }
+});
+
+module.exports = router;
